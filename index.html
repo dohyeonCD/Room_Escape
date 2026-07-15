@@ -145,13 +145,13 @@
   .lane:empty::before{content:'여기로 테마를 끌어오세요';color:#4a4a54;font-size:12px;margin:auto;}
   .chip{position:relative;width:80px;height:80px;flex:0 0 auto;border-radius:11px;cursor:grab;
     background-image:var(--board);background-repeat:no-repeat;overflow:hidden;
-    box-shadow:0 2px 8px rgba(0,0,0,.45);touch-action:none;}
+    box-shadow:0 2px 8px rgba(0,0,0,.45);touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
   .chip:active{cursor:grabbing;}
   .chip .lbl{position:absolute;left:0;right:0;bottom:0;font-size:12px;font-weight:800;color:#ffd24a;
-    text-align:center;padding:16px 3px 5px;line-height:1.1;
+    text-align:center;padding:16px 3px 5px;line-height:1.1;pointer-events:none;
     background:linear-gradient(transparent,rgba(0,0,0,.92));text-shadow:0 1px 2px rgba(0,0,0,.9);}
   .chip .rm{position:absolute;top:2px;right:2px;width:19px;height:19px;border-radius:50%;border:none;
-    background:rgba(0,0,0,.65);color:#fff;font-size:11px;line-height:1;cursor:pointer;display:none;padding:0;z-index:2;}
+    background:rgba(0,0,0,.65);color:#fff;font-size:11px;line-height:1;cursor:pointer;display:none;padding:0;z-index:2;touch-action:none;}
   .lane .chip .rm{display:block;}
   .sortable-ghost{opacity:.35;}
   .sortable-chosen{box-shadow:0 0 0 2px var(--accent2);}
@@ -727,9 +727,15 @@ async function saveCompareFromDOM(){
   clearTimeout(_cmpT); _cmpT=setTimeout(function(){ try{ refreshCmpAux(); }catch(e){ console.warn(e); } }, 0);  // 드래그 완전히 끝난 뒤 갱신
 }
 function cmpOnMove(evt){
+  if(evt.from === evt.to) return true;   // 같은 판 안 순서 변경은 중복이 생길 수 없음 → 항상 허용
   if(evt.to && evt.to.classList && evt.to.classList.contains('lane') && evt.dragged){
     const idx=evt.dragged.dataset.idx;
-    if([...evt.to.querySelectorAll('.chip')].some(c=>c!==evt.dragged && c.dataset.idx===idx)) return false; // 같은 판에 중복 금지
+    const dup=[...evt.to.querySelectorAll('.chip')].some(c=> c!==evt.dragged
+        && !c.classList.contains('sortable-fallback')   // 드래그 분신/고스트는 제외
+        && !c.classList.contains('sortable-drag')
+        && !c.classList.contains('sortable-ghost')
+        && c.dataset.idx===idx);
+    if(dup) return false;   // 다른 판에서 온 건데 이미 그 테마가 있으면 금지
   }
   return true;
 }
@@ -740,7 +746,7 @@ function initCmpSortables(){
   const fearLane=document.getElementById('fearLane'), diffLane=document.getElementById('diffLane');
   try{
     const isTouch = !!(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
-    const touchOpts = { forceFallback:isTouch, fallbackTolerance:4, delay:isTouch?90:0, delayOnTouchOnly:true };
+    const touchOpts = { forceFallback:isTouch, fallbackTolerance:3, fallbackOnBody:true };
     cmpSortables.push(new Sortable(pal,Object.assign({group:{name:'cmp',pull:'clone',put:false},sort:false,animation:150,onMove:cmpOnMove}, touchOpts)));
     [fearLane,diffLane].forEach(lane=>{
       cmpSortables.push(new Sortable(lane,Object.assign({group:{name:'cmp',pull:true,put:true},animation:150,
