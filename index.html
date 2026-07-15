@@ -147,10 +147,9 @@
     background-image:var(--board);background-repeat:no-repeat;overflow:hidden;
     box-shadow:0 2px 8px rgba(0,0,0,.45);touch-action:none;}
   .chip:active{cursor:grabbing;}
-  .chip .lbl{position:absolute;left:0;right:0;bottom:0;font-size:9.5px;font-weight:700;color:#fff;
-    text-align:center;padding:16px 3px 4px;line-height:1.12;
-    background:linear-gradient(transparent,rgba(0,0,0,.92));}
-  .chip .lbl b{display:block;font-weight:800;color:#ffd24a;font-size:9px;margin-top:1px;}
+  .chip .lbl{position:absolute;left:0;right:0;bottom:0;font-size:12px;font-weight:800;color:#ffd24a;
+    text-align:center;padding:16px 3px 5px;line-height:1.1;
+    background:linear-gradient(transparent,rgba(0,0,0,.92));text-shadow:0 1px 2px rgba(0,0,0,.9);}
   .chip .rm{position:absolute;top:2px;right:2px;width:19px;height:19px;border-radius:50%;border:none;
     background:rgba(0,0,0,.65);color:#fff;font-size:11px;line-height:1;cursor:pointer;display:none;padding:0;z-index:2;}
   .lane .chip .rm{display:block;}
@@ -673,9 +672,9 @@ function phStyle(i){ const r=RECTS[i];
   return `background-size:${bsW}% ${bsH}%;background-position:${px}% ${py}%`;
 }
 function chipHTML(i){
-  const rec=records[i]||{}; const ppl=rec.people?("("+rec.people+"인)"):"";
-  return `<div class="chip" data-idx="${i}" style="${phStyle(i)}" title="${esc0(NAMES[i]+ppl)}">`+
-    `<span class="lbl">${esc0(NAMES[i])}${ppl?("<b>"+esc0(ppl)+"</b>"):""}</span>`+
+  const rec=records[i]||{}; const ppl=rec.people?(rec.people+"인"):"?인";
+  return `<div class="chip" data-idx="${i}" style="${phStyle(i)}" title="${esc0(NAMES[i]+" ("+ppl+")")}">`+
+    `<span class="lbl">(${esc0(ppl)})</span>`+
     `<button class="rm" title="빼기">✕</button></div>`;
 }
 let cmpSortables=[];
@@ -740,13 +739,15 @@ function initCmpSortables(){
   const pal=document.getElementById('cmpPalette');
   const fearLane=document.getElementById('fearLane'), diffLane=document.getElementById('diffLane');
   try{
-    cmpSortables.push(new Sortable(pal,{group:{name:'cmp',pull:'clone',put:false},sort:false,animation:150,onMove:cmpOnMove}));
+    const isTouch = !!(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+    const touchOpts = { forceFallback:isTouch, fallbackTolerance:4, delay:isTouch?90:0, delayOnTouchOnly:true };
+    cmpSortables.push(new Sortable(pal,Object.assign({group:{name:'cmp',pull:'clone',put:false},sort:false,animation:150,onMove:cmpOnMove}, touchOpts)));
     [fearLane,diffLane].forEach(lane=>{
-      cmpSortables.push(new Sortable(lane,{group:{name:'cmp',pull:true,put:true},animation:150,
+      cmpSortables.push(new Sortable(lane,Object.assign({group:{name:'cmp',pull:true,put:true},animation:150,
         onMove:cmpOnMove,
         onAdd:function(){ saveCompareFromDOM(); },
         onUpdate:function(){ saveCompareFromDOM(); },
-        onRemove:function(){ saveCompareFromDOM(); } }));
+        onRemove:function(){ saveCompareFromDOM(); } }, touchOpts)));
     });
   }catch(e){ console.warn('sortable init', e); }
 }
