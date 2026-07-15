@@ -137,9 +137,33 @@
   .close{position:absolute;top:14px;right:16px;background:none;border:none;color:var(--muted);
     font-size:24px;cursor:pointer;line-height:1;}
   .savedmeta{font-size:12px;color:var(--muted);margin-top:2px;}
+  /* ---- theme compare ---- */
+  .palette{display:flex;flex-wrap:wrap;gap:8px;padding:10px;border:1px solid var(--line);border-radius:12px;background:#101015;min-height:60px;}
+  .palette .empty{color:#55555f;font-size:13px;padding:8px;}
+  .lane{display:flex;flex-wrap:wrap;align-content:flex-start;align-items:flex-start;gap:9px;min-height:100px;padding:10px;
+    border:1px dashed #34343f;border-radius:12px;background:#0e0e13;}
+  .lane:empty::before{content:'여기로 테마를 끌어오세요';color:#4a4a54;font-size:12px;margin:auto;}
+  .chip{position:relative;width:80px;height:80px;flex:0 0 auto;border-radius:11px;cursor:grab;
+    background-image:var(--board);background-repeat:no-repeat;overflow:hidden;
+    box-shadow:0 2px 8px rgba(0,0,0,.45);touch-action:none;}
+  .chip:active{cursor:grabbing;}
+  .chip .lbl{position:absolute;left:0;right:0;bottom:0;font-size:9.5px;font-weight:700;color:#fff;
+    text-align:center;padding:16px 3px 4px;line-height:1.12;
+    background:linear-gradient(transparent,rgba(0,0,0,.92));}
+  .chip .lbl b{display:block;font-weight:800;color:#ffd24a;font-size:9px;margin-top:1px;}
+  .chip .rm{position:absolute;top:2px;right:2px;width:19px;height:19px;border-radius:50%;border:none;
+    background:rgba(0,0,0,.65);color:#fff;font-size:11px;line-height:1;cursor:pointer;display:none;padding:0;z-index:2;}
+  .lane .chip .rm{display:block;}
+  .sortable-ghost{opacity:.35;}
+  .sortable-chosen{box-shadow:0 0 0 2px var(--accent2);}
+  .summary{border:1px solid var(--line);border-radius:12px;background:#101015;padding:14px 16px;display:flex;flex-direction:column;gap:14px;}
+  .sm-k{display:block;font-size:12px;font-weight:800;color:var(--accent2);margin-bottom:5px;letter-spacing:.5px;}
+  .sm-v{display:block;font-size:14px;line-height:1.7;color:var(--text);word-break:keep-all;}
+  .sm-v .none{color:var(--muted);}
 </style>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script crossorigin="anonymous" src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script crossorigin="anonymous" src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
 </head>
 <body>
 
@@ -156,6 +180,7 @@
       <button class="biglink" id="openLog">📖 방탈출 전체 기록 &amp; 티어표 보기 →</button>
       <div class="toolbar">
         <button id="btnSync">☁️ 기기 동기화</button>
+        <button id="btnCompare">🆚 테마 비교</button>
         <button id="btnCSV">📊 빙고 CSV</button>
         <button id="btnBackup">💾 백업 저장</button>
         <button id="btnRestore">📂 백업 불러오기</button>
@@ -203,6 +228,29 @@
         <tbody id="logBody"></tbody>
       </table>
     </div>
+  </div>
+</div>
+
+<!-- ===================== COMPARE VIEW ===================== -->
+<div id="compareView" style="display:none">
+  <div class="wrap">
+    <div class="loghead">
+      <button class="back" id="backBtn2">← 뒤로</button>
+      <h1>테마 비교</h1>
+    </div>
+    <div class="section-label">빙고 공테리스트 <span style="color:#7a7a86;font-weight:500;font-size:11px">· 아래 비교판으로 끌어오세요</span></div>
+    <div class="palette" id="cmpPalette"></div>
+    <div class="empty" id="palEmpty" style="display:none;border:1px solid var(--line);border-radius:12px;background:#101015;padding:12px;margin-top:6px;font-size:13px;color:#55555f"></div>
+
+    <div class="section-label">난이도 <span style="color:#7a7a86;font-weight:500;font-size:11px">( ← 더 어려움 · 더 쉬움 → )</span></div>
+    <div class="lane" id="diffLane"></div>
+
+    <div class="section-label">공포도 <span style="color:#7a7a86;font-weight:500;font-size:11px">( ← 더 무서움 · 덜 무서움 → )</span></div>
+    <div class="lane" id="fearLane"></div>
+
+    <div class="section-label">📋 순위 정리</div>
+    <div id="cmpSummary" class="summary"></div>
+    <div style="height:30px"></div>
   </div>
 </div>
 
@@ -307,12 +355,13 @@ const RECTS = [{"l": 4.269, "t": 19.612, "w": 9.496, "h": 7.355}, {"l": 14.538, 
 const NAMES = ["당신없이는", "HAPPY BIRTHDAY", "퇴근길", "피안화", "강천여자고등학교", "찬미특수진료센터", "포레스트", "영안실", "시민상가 철거반", "콜러", "INSANE", "깜방탈출", "춘화각", "제로", "피노키오", "언리얼", "학교", "버디", "브루클린 마이러브", "420번지", "괴록", "카부트", "잭인더쇼", "제일기숙학원 성지순례", "향", "투투 어드벤처", "삼일보육원", "조각모음", "플[래]시", "한마음 폐공장", "가암성당", "복도 끝", "층간소음", "그날", "목격자", "디스토피아", "허수아비", "스네어", "피그", "오시리스", "우정", "나폴리탄", "인형괴담", "스테이지", "문신", "하피스 캔디샵", "선택", "빨간 집", "슬래셔", "신촌성심병원", "생존자", "그달동네", "한강대 담력훈련", "아야코", "REC", "링", "리허설", "옵스큐라", "쇼쿠진", "종결사건", "육향찻집", "4F 마지막 기록", "인터뷰", "성지기숙학원", "악녀", "귀장고", "다이얼", "4-1", "배드타임", "몽타주", "비밀의 가족", "창귀", "엘로디", "BLACK MUSE", "DAYTOUR", "SILENT", "루시드드림", "혼숨", "낙화", "오모테나시", "헬컴투웰"];
 const W=2717, H=3508;
 document.getElementById('boardimg').src = "data:image/jpeg;base64," + BOARD_B64;
+document.documentElement.style.setProperty('--board', "url('data:image/jpeg;base64," + BOARD_B64 + "')");
 
 const GRADES = ["S","A+","A","B","C","D"];
 const GRADE_COLOR = {"S":"#e8b923","A+":"#e23b2e","A":"#e2762e","B":"#3b8fe2","C":"#2eb85c","D":"#8a8f98","":"#d63b3b"};
 const ESC_COLOR = {"성공":"#2eb85c","실패":"#e23b2e"};
 const TIER = [["S","#ff7f7f"],["A+","#ffdf7f"],["A","#ffff7f"],["B","#bfff7f"],["C","#7fff7f"],["D","#cfcfcf"]];
-const BINGO_KEY="escape_records_v1", LOG_KEY="escape_log_v1";
+const BINGO_KEY="escape_records_v1", LOG_KEY="escape_log_v1", COMPARE_KEY="escape_compare_v1";
 /* ★★★ 친구들이 '아이디'만 입력하면 되게 하려면, 아래 null 자리에 Firebase 설정을 넣고 배포하세요.
    예: const BAKED_CFG = { apiKey:"...", authDomain:"...", projectId:"...", appId:"..." };
    비워두면(null) 각 기기에서 동기화 설정 창에 직접 붙여넣어야 해요. ★★★ */
@@ -328,6 +377,7 @@ const BAKED_CFG = {
 
 let records = {};          // bingo
 let logRecords = [];       // general log
+let compareData = {fear:[], diff:[]};   // theme comparison lanes
 let current=null, isNew=false, draft={};        // bingo modal
 let logId=null, logDraft={};                     // log modal
 
@@ -345,12 +395,15 @@ async function storeSet(key,val){
 }
 async function persistBingo(){ await storeSet(BINGO_KEY, JSON.stringify(records)); }
 async function persistLog(){ await storeSet(LOG_KEY, JSON.stringify(logRecords)); }
+async function persistCompare(){ await storeSet(COMPARE_KEY, JSON.stringify(compareData)); }
+function normCompare(c){ c=c&&typeof c==='object'?c:{}; return {fear:Array.isArray(c.fear)?c.fear.map(Number):[], diff:Array.isArray(c.diff)?c.diff.map(Number):[]}; }
 async function loadAll(){
   try{ const s=await storeGet(BINGO_KEY); records = s?JSON.parse(s):{}; }catch(e){ records={}; }
   try{ const s=await storeGet(LOG_KEY); logRecords = s?JSON.parse(s):[]; }catch(e){ logRecords=[]; }
   if(!Array.isArray(logRecords)) logRecords=[];
   logRecords.forEach(r=>{ if(r.note!==undefined){ if(!r.review&&!r.memo) r.review=r.note; delete r.note; } });
   if(!Array.isArray(logRecords)) logRecords=[];
+  try{ const s=await storeGet(COMPARE_KEY); compareData = normCompare(s?JSON.parse(s):null); }catch(e){ compareData={fear:[],diff:[]}; }
 }
 
 /* ---------- shared helpers ---------- */
@@ -607,19 +660,130 @@ document.getElementById('btnResetAll').onclick=async()=>{
   const has = Object.keys(records).length>0 || logRecords.length>0;
   if(!has){ alert("삭제할 데이터가 없어요."); return; }
   if(!confirm("⚠ 전체 데이터 초기화\n\n빙고 · 전체 기록 · 티어표까지 모든 데이터가 삭제됩니다.\n되돌릴 수 없어요 — 진짜 다 날아갑니다!\n\n정말 초기화할까요?")) return;
-  records={}; logRecords=[];
-  await persistBingo(); await persistLog(); pushCloud();
-  renderBingo(); renderLog();
+  records={}; logRecords=[]; compareData={fear:[],diff:[]};
+  await persistBingo(); await persistLog(); await persistCompare(); pushCloud();
+  renderBingo(); renderLog(); renderCompare();
   alert("전체 데이터를 초기화했어요.");
 };
 
+/* ---------- theme compare ---------- */
+function phStyle(i){ const r=RECTS[i];
+  const bsW=(10000/r.w).toFixed(2), bsH=(10000/r.h).toFixed(2);
+  const px=(r.l/(100-r.w)*100).toFixed(2), py=(r.t/(100-r.h)*100).toFixed(2);
+  return `background-size:${bsW}% ${bsH}%;background-position:${px}% ${py}%`;
+}
+function chipHTML(i){
+  const rec=records[i]||{}; const ppl=rec.people?("("+rec.people+"인)"):"";
+  return `<div class="chip" data-idx="${i}" style="${phStyle(i)}" title="${esc0(NAMES[i]+ppl)}">`+
+    `<span class="lbl">${esc0(NAMES[i])}${ppl?("<b>"+esc0(ppl)+"</b>"):""}</span>`+
+    `<button class="rm" title="빼기">✕</button></div>`;
+}
+let cmpSortables=[];
+let _cmpT=null;
+function readLane(el){ const seen=new Set(), out=[];
+  [...el.querySelectorAll('.chip')].forEach(c=>{ const i=+c.dataset.idx; if(!seen.has(i)){ seen.add(i); out.push(i); } });
+  return out; }
+function dedupeLane(el){ const seen=new Set();
+  [...el.querySelectorAll('.chip')].forEach(c=>{ if(seen.has(c.dataset.idx)) c.remove(); else seen.add(c.dataset.idx); }); }
+function laneLabel(i){ const p=(records[i]&&records[i].people)?("("+records[i].people+"인)"):""; return NAMES[i]+p; }
+function _stampedSet(){ return new Set(Object.keys(records).map(Number)); }
+function summaryHTML(){
+  const ss=_stampedSet();
+  const diff=(compareData.diff||[]).filter(i=>ss.has(i));
+  const fear=(compareData.fear||[]).filter(i=>ss.has(i));
+  const txt=arr=> arr.length? arr.map(i=>esc0(laneLabel(i))).join(" &gt; ") : "<span class='none'>아직 없음</span>";
+  return "<div><span class='sm-k'>난이도</span><span class='sm-v'>"+txt(diff)+"</span></div>"+
+         "<div><span class='sm-k'>공포도</span><span class='sm-v'>"+txt(fear)+"</span></div>";
+}
+// 리스트 DOM은 건드리지 않고, '두 판 모두 올린' 테마 아이콘만 숨김 처리 (드래그 충돌 방지)
+function updatePaletteVisibility(){
+  const pal=document.getElementById('cmpPalette'); if(!pal) return;
+  const ss=_stampedSet();
+  const fearSet=new Set((compareData.fear||[]).filter(i=>ss.has(i)));
+  const diffSet=new Set((compareData.diff||[]).filter(i=>ss.has(i)));
+  let visible=0;
+  [...pal.querySelectorAll('.chip')].forEach(c=>{ const i=+c.dataset.idx;
+    const both=fearSet.has(i)&&diffSet.has(i);
+    c.style.display = both ? "none" : "";
+    if(!both) visible++;
+  });
+  const emptyEl=document.getElementById('palEmpty');
+  if(emptyEl){
+    if(ss.size===0){ emptyEl.textContent="먼저 빙고판에서 도장을 찍으면, 그 테마들이 여기 아이콘으로 나타나요."; emptyEl.style.display=""; }
+    else if(visible===0){ emptyEl.textContent="모든 테마의 난이도·공포도 순위를 다 매겼어요! 🎉"; emptyEl.style.display=""; }
+    else emptyEl.style.display="none";
+  }
+}
+function refreshCmpAux(){   // summary + palette 숨김 갱신 (노드 추가/삭제 없음 → 안전)
+  const fl=document.getElementById('fearLane'), dl=document.getElementById('diffLane');
+  if(fl) dedupeLane(fl); if(dl) dedupeLane(dl);   // 드래그 끝난 뒤라 안전하게 중복 아이콘 정리
+  const sm=document.getElementById('cmpSummary'); if(sm) sm.innerHTML=summaryHTML();
+  updatePaletteVisibility();
+}
+async function saveCompareFromDOM(){
+  try{
+    compareData={ fear:readLane(document.getElementById('fearLane')), diff:readLane(document.getElementById('diffLane')) };
+    await persistCompare(); pushCloud();
+  }catch(e){ console.warn('compare save', e); }
+  clearTimeout(_cmpT); _cmpT=setTimeout(function(){ try{ refreshCmpAux(); }catch(e){ console.warn(e); } }, 0);  // 드래그 완전히 끝난 뒤 갱신
+}
+function cmpOnMove(evt){
+  if(evt.to && evt.to.classList && evt.to.classList.contains('lane') && evt.dragged){
+    const idx=evt.dragged.dataset.idx;
+    if([...evt.to.querySelectorAll('.chip')].some(c=>c!==evt.dragged && c.dataset.idx===idx)) return false; // 같은 판에 중복 금지
+  }
+  return true;
+}
+function initCmpSortables(){
+  cmpSortables.forEach(s=>{ try{s.destroy();}catch(e){} }); cmpSortables=[];
+  if(typeof Sortable==="undefined") return;
+  const pal=document.getElementById('cmpPalette');
+  const fearLane=document.getElementById('fearLane'), diffLane=document.getElementById('diffLane');
+  try{
+    cmpSortables.push(new Sortable(pal,{group:{name:'cmp',pull:'clone',put:false},sort:false,animation:150,onMove:cmpOnMove}));
+    [fearLane,diffLane].forEach(lane=>{
+      cmpSortables.push(new Sortable(lane,{group:{name:'cmp',pull:true,put:true},animation:150,
+        onMove:cmpOnMove,
+        onAdd:function(){ saveCompareFromDOM(); },
+        onUpdate:function(){ saveCompareFromDOM(); },
+        onRemove:function(){ saveCompareFromDOM(); } }));
+    });
+  }catch(e){ console.warn('sortable init', e); }
+}
+function renderCompare(){   // full render — 화면 열 때/동기화 갱신 때만 (드래그 중 아님)
+  try{
+    const ss=_stampedSet();
+    const stamped=Object.keys(records).map(Number).sort((a,b)=>a-b);
+    const diff=(compareData.diff||[]).filter(i=>ss.has(i));
+    const fear=(compareData.fear||[]).filter(i=>ss.has(i));
+    const pal=document.getElementById('cmpPalette');
+    const fearLane=document.getElementById('fearLane'), diffLane=document.getElementById('diffLane');
+    if(!pal||!fearLane||!diffLane) return;
+    pal.innerHTML = stamped.map(chipHTML).join("");   // 리스트엔 항상 전체 도장 테마 (숨김은 style로)
+    diffLane.innerHTML=diff.map(chipHTML).join("");
+    fearLane.innerHTML=fear.map(chipHTML).join("");
+    document.getElementById('cmpSummary').innerHTML=summaryHTML();
+    initCmpSortables();
+    updatePaletteVisibility();
+  }catch(e){ console.warn('renderCompare', e); }
+}
+// remove chip via ✕ (event delegation, attached once)
+document.getElementById('compareView').addEventListener('click',e=>{
+  const b=e.target.closest('.lane .rm'); if(!b) return;
+  b.closest('.chip').remove(); saveCompareFromDOM();
+});
+
 /* ---------- view switching ---------- */
-function showLog(){ document.getElementById('mainView').style.display="none";
-  document.getElementById('logView').style.display=""; renderLog(); window.scrollTo(0,0); }
-function showMain(){ document.getElementById('logView').style.display="none";
-  document.getElementById('mainView').style.display=""; window.scrollTo(0,0); }
+function hideAllViews(){ document.getElementById('mainView').style.display="none";
+  document.getElementById('logView').style.display="none";
+  document.getElementById('compareView').style.display="none"; }
+function showLog(){ hideAllViews(); document.getElementById('logView').style.display=""; renderLog(); window.scrollTo(0,0); }
+function showCompare(){ hideAllViews(); document.getElementById('compareView').style.display=""; renderCompare(); window.scrollTo(0,0); }
+function showMain(){ hideAllViews(); document.getElementById('mainView').style.display=""; window.scrollTo(0,0); }
 document.getElementById('openLog').onclick=showLog;
+document.getElementById('btnCompare').onclick=showCompare;
 document.getElementById('backBtn').onclick=showMain;
+document.getElementById('backBtn2').onclick=showMain;
 
 /* ---------- export / import ---------- */
 function download(text,name,type){ const b=new Blob([text],{type}); const u=URL.createObjectURL(b);
@@ -639,17 +803,18 @@ document.getElementById('btnLogCSV').onclick=()=>{
     rows.push([(i+1)+"방",r.title,fmt(r.date),r.people,r.diff,r.grade,r.escaped,r.hints,normTime(r.remaining),r.minutes,r.price,r.review,r.memo]); });
   download("\ufeff"+rows.map(row=>row.map(csvCell).join(",")).join("\r\n"),"방탈출_전체기록.csv","text/csv;charset=utf-8");
 };
-document.getElementById('btnBackup').onclick=()=>download(JSON.stringify({v:2,bingo:records,log:logRecords},null,2),"방탈출_백업.json","application/json");
+document.getElementById('btnBackup').onclick=()=>download(JSON.stringify({v:2,bingo:records,log:logRecords,compare:compareData},null,2),"방탈출_백업.json","application/json");
 document.getElementById('btnRestore').onclick=()=>document.getElementById('importInput').click();
 document.getElementById('importInput').onchange=async e=>{
   const f=e.target.files[0]; if(!f) return;
   try{ const obj=JSON.parse(await f.text());
-    let b,l;
-    if(obj && (obj.bingo!==undefined || obj.log!==undefined)){ b=obj.bingo||{}; l=obj.log||[]; }
-    else { b=obj; l=logRecords; }   // old backup (bingo only) — keep current log
+    let b,l,c;
+    if(obj && (obj.bingo!==undefined || obj.log!==undefined)){ b=obj.bingo||{}; l=obj.log||[]; c=obj.compare; }
+    else { b=obj; l=logRecords; c=compareData; }   // old backup (bingo only)
     if(confirm("불러오면 현재 이 기기의 기록을 덮어씁니다. 진행할까요?")){
-      records=b||{}; logRecords=Array.isArray(l)?l:[];
-      await persistBingo(); await persistLog(); pushCloud(); renderBingo(); renderLog(); alert("불러오기 완료!");
+      records=b||{}; logRecords=Array.isArray(l)?l:[]; compareData=normCompare(c);
+      await persistBingo(); await persistLog(); await persistCompare(); pushCloud();
+      renderBingo(); renderLog(); renderCompare(); alert("불러오기 완료!");
     }
   }catch(err){ alert("올바른 백업 파일이 아니에요."); }
   e.target.value="";
@@ -689,7 +854,7 @@ function getCfg(){
 }
 function pushCloud(){
   if(!syncDoc) return; myLastPush=Date.now();
-  try{ syncDoc.set({bingo:records, log:logRecords, nickname:myNick, updatedAt:myLastPush, device:myDevice}); }catch(e){}
+  try{ syncDoc.set({bingo:records, log:logRecords, compare:compareData, nickname:myNick, updatedAt:myLastPush, device:myDevice}).catch(function(){}); }catch(e){}
 }
 function initSync(){
   // migrate old single-id storage (token__nick) -> token + nick
@@ -713,8 +878,10 @@ function initSync(){
       // adopt remote data
       records=d.bingo||{}; logRecords=Array.isArray(d.log)?d.log:[];
       logRecords.forEach(r=>{ if(r.note!==undefined){ if(!r.review&&!r.memo) r.review=r.note; delete r.note; } });
-      persistBingo(); persistLog(); renderBingo();
+      compareData=normCompare(d.compare);
+      persistBingo(); persistLog(); persistCompare(); renderBingo();
       if(document.getElementById('logView').style.display!=='none') renderLog();
+      if(document.getElementById('compareView').style.display!=='none') renderCompare();
       // nickname: my rename wins & propagates; otherwise adopt the account's shared name
       if(nickPush){ pushCloud(); delLS(PUSH_KEY); nickPush=false; }
       else if(d.nickname!==undefined){ myNick=d.nickname; setLS(NICK_KEY,myNick); }
