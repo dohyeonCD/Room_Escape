@@ -173,6 +173,11 @@
   .rvempty{color:var(--muted);font-size:13px;padding:14px;border:1px dashed #34343f;border-radius:12px;text-align:center;}
   .ttrow{display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:10px;
     border:1px solid var(--line);border-radius:12px;background:#101015;}
+  .ttbulk{display:flex;align-items:center;gap:9px;margin-bottom:12px;padding:11px 12px;
+    border:1px solid var(--line);border-radius:12px;background:#12120c;}
+  .ttbulk button{background:var(--panel2);border:1px solid #4a3a12;color:#ffd24a;border-radius:10px;
+    padding:11px 15px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:.12s;white-space:nowrap;}
+  .ttbulk button:hover{border-color:#ffd24a;}
   .ttrow select{flex:1.4;min-width:0;}
   .ttrow input[type=date]{flex:1;min-width:0;}
   .ttrow .del{flex:0 0 auto;width:36px;height:38px;border-radius:10px;border:1px solid var(--line);
@@ -304,6 +309,11 @@
       <h1>타임테이블 생성</h1>
     </div>
     <div class="section-label">🎯 테마 · 플레이 희망 일자</div>
+    <div class="ttbulk">
+      <span style="color:var(--muted);font-size:13px;white-space:nowrap">한 날짜로 전체 채우기</span>
+      <input type="date" id="ttBulkDate" style="flex:1">
+      <button id="ttBulkFill">전체 추가</button>
+    </div>
     <div id="ttRows"></div>
     <button class="addbtn" id="ttAddRow">＋ 행 추가</button>
     <div class="section-label">📋 계산 결과 미리보기</div>
@@ -1120,6 +1130,19 @@ function renderTTPreview(){
 }
 document.getElementById('btnTTGo').onclick=()=>{ ttList=[{bid:"",date:""}]; showTT(); };
 document.getElementById('ttAddRow').onclick=()=>{ readTTRows(); ttList.push({bid:"",date:""}); renderTTRows(); };
+document.getElementById('ttBulkFill').onclick=()=>{
+  const date=document.getElementById('ttBulkDate').value;
+  if(!date){ alert("먼저 플레이 희망 일자를 선택해주세요."); return; }
+  if(!bookings.length){ alert("등록된 예약 정보가 없어요. 먼저 예약 정보를 추가해주세요."); return; }
+  readTTRows();
+  const have=new Set(ttList.map(r=>r.bid).filter(Boolean));
+  const rows=bookings.slice().sort((a,b)=>a.title.localeCompare(b.title,'ko'))
+    .filter(b=>!have.has(b.id)).map(b=>({bid:b.id, date}));
+  // 비어있는 기본 행은 치우고, 이미 있던 유효한 행은 유지
+  ttList=ttList.filter(r=>r.bid||r.date).concat(rows);
+  if(!ttList.length) ttList=[{bid:"",date:""}];
+  renderTTRows();
+};
 document.getElementById('ttRows').addEventListener('click',e=>{
   const del=e.target.closest('.del'); if(!del) return;
   readTTRows();
