@@ -1086,7 +1086,7 @@ function renderTTRows(){
   const opts=bookings.slice().sort((a,b)=>a.title.localeCompare(b.title,'ko'));
   box.innerHTML = ttList.map((r,i)=>`<div class="ttrow" data-i="${i}">
       <select class="ttsel"><option value="">테마 선택…</option>${
-        opts.map(b=>`<option value="${esc0(b.id)}"${b.id===r.bid?" selected":""}>${esc0(b.title)} (${esc0(openTiming(b))})</option>`).join("")
+        opts.map(b=>`<option value="${esc0(b.id)}"${b.id===r.bid?" selected":""}>${esc0(b.title)}${b.memo?" ("+esc0(b.memo)+")":""}</option>`).join("")
       }</select>
       <input type="date" class="ttdate" value="${esc0(r.date)}">
       <button class="del" title="행 삭제">✕</button>
