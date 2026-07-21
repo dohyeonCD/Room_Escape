@@ -1172,12 +1172,7 @@ document.getElementById('ttDone').onclick=()=>{
   try{
     // 날짜 컬럼 (티켓팅 날짜 기준, 최소~최대 구간 채우기)
     const dayKey=d=>d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());
-    const days=[...new Set(es.map(e=>dayKey(e.ticket)))].sort();
-    const first=new Date(days[0]+"T00:00:00"), last=new Date(days[days.length-1]+"T00:00:00");
-    const span=Math.round((last-first)/86400000);
-    let cols=[];
-    if(span<=31){ for(let i=0;i<=span;i++){ const d=new Date(first.getTime()); d.setDate(d.getDate()+i); cols.push(dayKey(d)); } }
-    else cols=days;
+    const cols=[...new Set(es.map(e=>dayKey(e.ticket)))].sort();   // 예약이 실제로 있는 날짜만
     const colIdx={}; cols.forEach((k,i)=>colIdx[k]=i);
     const slots=timeSlots();
     const grid=slots.map(()=>cols.map(()=>""));
