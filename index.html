@@ -311,7 +311,7 @@
     <div class="section-label">🎯 테마 · 플레이 희망 일자</div>
     <div class="ttbulk">
       <span style="color:var(--muted);font-size:13px;white-space:nowrap">한 날짜로 전체 채우기</span>
-      <input type="date" id="ttBulkDate" style="flex:1">
+      <input type="date" id="ttBulkDate" min="2000-01-01" max="2099-12-31" style="flex:1">
       <button id="ttBulkFill">전체 추가</button>
     </div>
     <div id="ttRows"></div>
@@ -387,7 +387,7 @@
       <div class="savedmeta" id="savedMeta"></div>
     </div>
     <div class="mbody">
-      <div class="field"><label>날짜</label><input type="date" id="fDate"></div>
+      <div class="field"><label>날짜</label><input type="date" id="fDate" min="2000-01-01" max="2099-12-31"></div>
       <div class="field"><label>인원</label><div class="seg" id="fPeople"></div></div>
       <div class="field"><label>체감 공포</label><div class="stars" id="fFear"></div></div>
       <div class="field"><label>체감 난이도</label><div class="stars" id="fDiff"></div></div>
@@ -422,7 +422,7 @@
         </div>
         <div class="savedmeta" id="lgImportMsg" style="margin-top:6px"></div>
       </div>
-      <div class="field"><label>날짜</label><input type="date" id="lgDate"></div>
+      <div class="field"><label>날짜</label><input type="date" id="lgDate" min="2000-01-01" max="2099-12-31"></div>
       <div class="field"><label>인원</label><div class="seg" id="lgPeople"></div></div>
       <div class="field"><label>체감 난이도</label><div class="stars" id="lgDiff"></div></div>
       <div class="field"><label>종합 등급</label><div class="seg" id="lgGrade"></div></div>
@@ -1088,7 +1088,7 @@ function renderTTRows(){
       <select class="ttsel"><option value="">테마 선택…</option>${
         opts.map(b=>`<option value="${esc0(b.id)}"${b.id===r.bid?" selected":""}>${esc0(b.title)}${b.memo?" ("+esc0(b.memo)+")":""}</option>`).join("")
       }</select>
-      <input type="date" class="ttdate" value="${esc0(r.date)}">
+      <input type="date" class="ttdate" min="2000-01-01" max="2099-12-31" value="${esc0(r.date)}">
       <button class="del" title="행 삭제">✕</button>
     </div>`).join("");
   renderTTPreview();
