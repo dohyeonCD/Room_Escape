@@ -175,6 +175,25 @@
     border:1px solid var(--line);border-radius:12px;background:#101015;}
   .ttbulk{display:flex;align-items:center;gap:9px;margin-bottom:12px;padding:11px 12px;
     border:1px solid var(--line);border-radius:12px;background:#12120c;}
+  /* ---- booking sites ---- */
+  .sitegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:11px;}
+  .sitecard{position:relative;display:block;text-decoration:none;border-radius:14px;overflow:hidden;
+    border:1px solid var(--line);background:#101015;aspect-ratio:1/1;cursor:pointer;transition:.14s;}
+  .sitecard:hover{border-color:var(--accent2);transform:translateY(-2px);}
+  .sitecard .ph{position:absolute;inset:0;background-image:var(--board);background-repeat:no-repeat;}
+  .sitecard .ic{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    box-sizing:border-box;padding-bottom:22px;padding-left:4px;
+    font-size:38px;line-height:1;text-align:center;background:linear-gradient(145deg,#1a1a22,#101015);}
+  .sitecard .cap{position:absolute;left:0;right:0;bottom:0;padding:20px 7px 8px;
+    background:linear-gradient(transparent,rgba(0,0,0,.93) 55%);
+    font-size:11.5px;font-weight:800;color:#fff;text-align:center;line-height:1.25;
+    word-break:keep-all;text-shadow:0 1px 3px rgba(0,0,0,.95);}
+  .sitecard .memo{display:block;font-size:9.5px;font-weight:600;color:#b9b9c4;margin-top:2px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .sitecard.nolink{cursor:default;opacity:.55;}
+  .sitecard.nolink:hover{border-color:var(--line);transform:none;}
+  .sitecard .nolabel{position:absolute;top:6px;right:6px;font-size:9px;font-weight:700;
+    color:var(--muted);background:rgba(0,0,0,.7);padding:2px 6px;border-radius:20px;}
   .ttbulk button{background:var(--panel2);border:1px solid #4a3a12;color:#ffd24a;border-radius:10px;
     padding:11px 15px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:.12s;white-space:nowrap;}
   .ttbulk button:hover{border-color:#ffd24a;}
@@ -290,13 +309,14 @@
       <button class="back" id="backBtn3">← 뒤로</button>
       <h1>예약 타임테이블</h1>
     </div>
-    <div class="section-label">📌 테마별 예약 정보 <span style="color:#7a7a86;font-weight:500;font-size:11px">· 한 번 넣어두면 계속 재사용돼요</span></div>
-    <div id="resvList"></div>
-    <div class="toolbar" style="justify-content:flex-start;margin-top:12px">
+    <div class="toolbar" style="justify-content:flex-start;margin-top:0;margin-bottom:14px">
       <button id="btnResvAdd">＋ 예약 정보 추가</button>
       <button id="btnResvAdmin">📥 관리자 데이터 활용</button>
+      <button id="btnSites">🔗 예약 사이트 정리</button>
       <button id="btnTTGo" style="border-color:#4a3a12;color:#ffd24a">📅 타임테이블 생성</button>
     </div>
+    <div class="section-label">📌 테마별 예약 정보 <span style="color:#7a7a86;font-weight:500;font-size:11px">· 한 번 넣어두면 계속 재사용돼요</span></div>
+    <div id="resvList"></div>
     <div style="height:30px"></div>
   </div>
 </div>
@@ -321,6 +341,19 @@
     <div class="toolbar" style="justify-content:flex-start;margin-top:12px">
       <button id="ttDone" style="border-color:#1e5b32;color:#8bf5a8">✅ 완료 · 엑셀 만들기</button>
     </div>
+    <div style="height:30px"></div>
+  </div>
+</div>
+
+<!-- ===================== BOOKING SITES VIEW ===================== -->
+<div id="sitesView" style="display:none">
+  <div class="wrap">
+    <div class="loghead">
+      <button class="back" id="backBtn5">← 뒤로</button>
+      <h1>예약 사이트</h1>
+    </div>
+    <div class="section-label">🔗 테마를 누르면 예약 사이트로 이동해요</div>
+    <div class="sitegrid" id="siteGrid"></div>
     <div style="height:30px"></div>
   </div>
 </div>
@@ -929,7 +962,8 @@ function hideAllViews(){ document.getElementById('mainView').style.display="none
   document.getElementById('logView').style.display="none";
   document.getElementById('compareView').style.display="none";
   document.getElementById('resvView').style.display="none";
-  document.getElementById('ttView').style.display="none"; }
+  document.getElementById('ttView').style.display="none";
+  document.getElementById('sitesView').style.display="none"; }
 function showLog(){ hideAllViews(); document.getElementById('logView').style.display=""; renderLog(); window.scrollTo(0,0); }
 function showCompare(){ hideAllViews(); document.getElementById('compareView').style.display=""; renderCompare(); window.scrollTo(0,0); }
 function showMain(){ hideAllViews(); document.getElementById('mainView').style.display=""; window.scrollTo(0,0); }
@@ -963,6 +997,40 @@ document.getElementById('backBtn2').onclick=showMain;
 document.getElementById('btnResv').onclick=showResv;
 document.getElementById('backBtn3').onclick=showLog;
 document.getElementById('backBtn4').onclick=showResv;
+document.getElementById('backBtn5').onclick=showResv;
+
+/* ---------- 예약 사이트 정리 ---------- */
+function normalizeUrl(u){
+  u=(u||"").trim(); if(!u) return "";
+  if(/^https?:\/\//i.test(u)) return u;
+  if(/^[\w.-]+\.[a-z]{2,}(\/|$)/i.test(u)) return "https://"+u;
+  return "";
+}
+function bingoIndexOf(title){
+  const t=(title||"").trim().toLowerCase();
+  for(let i=0;i<NAMES.length;i++){ if(NAMES[i].trim().toLowerCase()===t) return i; }
+  return -1;
+}
+function showSites(){ hideAllViews(); document.getElementById('sitesView').style.display=""; renderSites(); window.scrollTo(0,0); }
+function renderSites(){
+  const box=document.getElementById('siteGrid'); if(!box) return;
+  if(!bookings.length){
+    box.innerHTML="<div class='rvempty' style='grid-column:1/-1'>아직 등록된 예약 정보가 없어요.<br>'＋ 예약 정보 추가'로 테마와 예약 사이트를 등록해보세요.</div>";
+    return;
+  }
+  box.innerHTML = bookings.slice().sort((a,b)=>a.title.localeCompare(b.title,'ko')).map(b=>{
+    const url=normalizeUrl(b.site);
+    const idx=bingoIndexOf(b.title);
+    const visual = idx>=0
+      ? `<span class="ph" style="${phStyle(idx)}"></span>`
+      : `<span class="ic">🔐</span>`;
+    const cap=`<span class="cap">${esc0(b.title)}${b.memo?`<span class="memo">${esc0(b.memo)}</span>`:""}</span>`;
+    return url
+      ? `<a class="sitecard" href="${esc0(url)}" target="_blank" rel="noopener noreferrer">${visual}${cap}</a>`
+      : `<div class="sitecard nolink" title="예약 사이트가 등록되지 않았어요">${visual}<span class="nolabel">링크 없음</span>${cap}</div>`;
+  }).join("");
+}
+document.getElementById('btnSites').onclick=showSites;
 
 /* ---------- 예약 정보 (재사용 데이터) ---------- */
 function openTiming(b){ return (b.days>0? (b.days+"일 전 ") : "당일 ") + b.time; }
